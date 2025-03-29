@@ -15,6 +15,9 @@ sudo apt update && sudo apt -y upgrade
 ```
 and then reboot your machine 
 
+# Pre-Requisites
+Setup DNS A record before initiating this process in order for SSL to work. You will not be able to pause the process mid way to complete it and will be required to perform a complete restart.
+
 # Important!
 Do not run this script as root as it will fail when setting up the site. If your VPS default user is root, create a non-root user by following these steps:
 

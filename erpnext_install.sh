@@ -526,5 +526,5 @@ echo -e "-----------------------------------------------------------------------
 
 bench --site $site_name migrate
 bench restart
-benhc --site $site_name clear-cache
+bench --site $site_name clear-cache
 
