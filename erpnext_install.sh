@@ -398,17 +398,13 @@ config_file = '$config_file'
 if os.path.exists(config_file):
     with open(config_file, 'r') as f:
         config = json.load(f)
-    
-    # Set Redis configurations to use port 6379
     config.update({
         'redis_cache': 'redis://127.0.0.1:6379',
         'redis_queue': 'redis://127.0.0.1:6379',
         'redis_socketio': 'redis://127.0.0.1:6379'
     })
-    
     with open(config_file, 'w') as f:
         json.dump(config, f, indent=2)
-    
     print('Redis configuration updated to use port 6379')
 else:
     print('Config file not found, creating with Redis settings')
@@ -498,4 +494,5 @@ echo -e "-----------------------------------------------------------------------
 echo -e "${YELLOW}Starting development server...${NC}"
 sleep 1
 bench start
+
 
