@@ -322,11 +322,11 @@ echo -e "${GREEN}Bench installation complete!${NC}"
 sleep 1
 
 # Prompt user for site name
-echo -e "${YELLOW}Preparing for Production installation. This could take a minute... or two so please be patient.${NC}"
-echo -e "${LIGHT_BLUE}Enter the site name. '.t-erp.co.za' will be automatically appended to your input.${NC}"
+echo -e "${YELLOW}Setting up development site...${NC}"
+echo -e "${LIGHT_BLUE}Enter the site name for local development (e.g., 'mysite' will become 'mysite.local'):${NC}"
 read -p "Site name: " user_input
-site_name="${user_input}.t-erp.co.za"
-echo -e "${GREEN}Your full site name is: $site_name${NC}"
+site_name="${user_input}.local"
+echo -e "${GREEN}Your development site name is: $site_name${NC}"
 sleep 1
 
 # Prompt for admin password
@@ -366,60 +366,25 @@ python_version=$(python3 -c "import sys; print(f'{sys.version_info.major}.{sys.v
 playbook_file="/usr/local/lib/python${python_version}/dist-packages/bench/playbooks/roles/mariadb/tasks/main.yml"
 sudo sed -i 's/- include: /- include_tasks: /g' $playbook_file
 
-# Production setup
-echo -e "${YELLOW}Installing packages and dependencies for Production...${NC}"
-sleep 2
-# Setup supervisor and nginx config
-yes | sudo bench setup production $USER && \
-echo -e "${YELLOW}Applying necessary permissions to supervisor...${NC}"
+# Development setup - skip production configuration
+echo -e "${YELLOW}Setting up development environment...${NC}"
 sleep 1
-# Change ownership of supervisord.conf
-# Path to the supervisord.conf file
-FILE="/etc/supervisor/supervisord.conf"
-# Construct the search pattern with the current $USER environment variable
-SEARCH_PATTERN="chown=$USER:$USER"
 
-# Check if the pattern exists in the file
-if grep -q "$SEARCH_PATTERN" "$FILE"; then
-    echo -e "${YELLOW}User ownership already exists for supervisord. Updating it...${NC}"
-    # Replace the existing line with the new user ownership line
-    sudo sed -i "/chown=.*/c $SEARCH_PATTERN" "$FILE"
-else
-    echo -e "${YELLOW}User ownership does not exist for supervisor. Adding it...${NC}"
-    # Insert the new user ownership line at a specific line number
-    sudo sed -i "5a $SEARCH_PATTERN" "$FILE"
-fi
-
-# Restart supervisor
-sudo service supervisor restart && \
-
-# Setup production again to reflect the new site
-yes | sudo bench setup production $USER && \
-
-echo -e "${YELLOW}Enabling Scheduler...${NC}"
+echo -e "${YELLOW}Enabling Scheduler for development...${NC}"
 sleep 1
 # Enable and resume the scheduler for the site
 bench --site $site_name scheduler enable && \
 bench --site $site_name scheduler resume && \
-if [[ "$bench_version" == "version-15" ]]; then
-    echo -e "${YELLOW}Setting up Socketio, Redis and Supervisor...${NC}"
-    sleep 1
-    bench setup socketio
-    yes | bench setup supervisor
-    bench setup redis
-    sudo supervisorctl reload
-fi
-echo -e "${YELLOW}Restarting bench to apply all changes and optimizing environment pernissions.${NC}"
+
+echo -e "${YELLOW}Setting up development services...${NC}"
 sleep 1
+if [[ "$bench_version" == "version-15" ]]; then
+    bench setup socketio
+    bench setup redis
+fi
 
-
-# Now to make sure the environment is fully setup
-sudo chmod 755 /home/$(echo $USER)
-sleep 3
-printf "${GREEN}Production setup complete! "
-printf '\xF0\x9F\x8E\x86'
-printf "${NC}\n"
-sleep 3
+echo -e "${GREEN}Development setup complete!${NC}"
+sleep 2
 
 # HRMS installation logic
 echo -e "${LIGHT_BLUE}Proceeding with HRMS installation...${NC}"
@@ -442,53 +407,14 @@ if ! install_hrms; then
     fi
 fi
 
-# Whitelabel-Terp Installation logic
-echo -e "${LIGHT_BLUE}Proceeding with T-ERP Whitelabel installation...${NC}"
-sleep 2
-
-if ! install_whitelabel_terp; then 
-    echo -e "${YELLOW}T-ERP Whitelabel installation failed.${NC}"
-else
-    echo -e "${GREEN}T-ERP Whitelabel installation succeeded.${NC}"
-fi
-sleep 2
-
-
-echo -e "${YELLOW}Proceeding with SSL installation...${NC}"
-echo -e "${YELLOW}Make sure your domain name is pointed to the IP of this instance and is reachable.${NC}"
-sleep 3
-
-# Set E-mail value for SSL
-email_address="tech@t-erp.co.za"
-
-# Install Certbot
-echo -e "${YELLOW}Installing Certbot...${NC}"
+# Skip Whitelabel-Terp installation for development
+echo -e "${YELLOW}Skipping T-ERP Whitelabel installation for development environment...${NC}"
 sleep 1
-if [ "$DISTRO" == "Debian" ]; then
-    echo -e "${YELLOW}Fixing openssl package on Debian...${NC}"
-    sleep 4
-    sudo pip3 uninstall cryptography -y
-    yes | sudo pip3 install pyopenssl==22.0.0 cryptography==36.0.0
-    echo -e "${GREEN}Package fixed${NC}"
-    sleep 2
-fi
 
-# Install Certbot Classic
-sudo apt install snapd -y && \
-sudo snap install core && \
-sudo snap refresh core && \
-sudo snap install --classic certbot && \
-sudo ln -s /snap/bin/certbot /usr/bin/certbot
 
-# Obtain and Install the certificate
-echo -e "${YELLOW}Obtaining and installing SSL certificate...${NC}"
-sleep 2
-if sudo certbot --nginx --non-interactive --agree-tos --email $email_address -d $site_name; then
-    echo -e "${GREEN}SSL certificate installed successfully.${NC}"
-else
-    echo -e "${RED}SSL certificate installation failed. Please check your domain configuration and try again manually.${NC}"
-fi
-sleep 2
+# Skip SSL setup for development environment
+echo -e "${YELLOW}Skipping SSL setup for development environment...${NC}"
+sleep 1
 
 # Now let's deactivate virtual environment
 if [ -z "$py_version" ] || [ "$py_major" -lt 3 ] || [ "$py_major" -eq 3 -a "$py_minor" -lt 10 ]; then
@@ -496,12 +422,7 @@ if [ -z "$py_version" ] || [ "$py_major" -lt 3 ] || [ "$py_major" -eq 3 -a "$py_
 fi
 
 echo -e "${GREEN}--------------------------------------------------------------------------------"
-echo -e "Congratulations! You have successfully installed ERPNext $version_choice."
-echo -e "You can start using your new ERPNext installation by visiting https://$site_name"
-echo -e "(if you have enabled SSL and used a Fully Qualified Domain Name"
-echo -e "during installation) or http://$server_ip to begin."
-echo -e "Install additional apps as required. Visit https://docs.erpnext.com for Documentation."
-echo -e "Enjoy using ERPNext!"
+echo -e "Congratulations! You have successfully installed ERPNext $version_choice Development Environment."
 echo -e "--------------------------------------------------------------------------------${NC}"
 
 echo -e "${YELLOW}Getting your site ready for development...${NC}"
@@ -514,17 +435,26 @@ else
 fi
 bench use $site_name
 bench build
-echo -e "${GREEN}Done!"
-sleep 5
-
-echo -e "${GREEN}-----------------------------------------------------------------------------------------------"
-echo -e "Congratulations! You have successfully installed Frappe and ERPNext $version_choice Development Environment."
-echo -e "Start your instance by running bench start to start your server and visiting http://$server_ip:8000"
-echo -e "Install additional apps as required. Visit https://frappeframework.com for Developer Documentation."
-echo -e "Enjoy development with Frappe!"
-echo -e "-----------------------------------------------------------------------------------------------${NC}"
+echo -e "${GREEN}Build complete!${NC}"
+sleep 2
 
 bench --site $site_name migrate
-bench restart
 bench --site $site_name clear-cache
+
+echo -e "${GREEN}-----------------------------------------------------------------------------------------------"
+echo -e "SUCCESS! ERPNext $version_choice Development Environment is ready!"
+echo -e ""
+echo -e "To start your development server:"
+echo -e "  cd ~/frappe-bench"
+echo -e "  bench start"
+echo -e ""
+echo -e "Then visit: http://localhost:8000"
+echo -e "Site: $site_name"
+echo -e ""
+echo -e "For documentation: https://frappeframework.com"
+echo -e "-----------------------------------------------------------------------------------------------${NC}"
+
+echo -e "${YELLOW}Starting development server...${NC}"
+sleep 1
+bench start
 
