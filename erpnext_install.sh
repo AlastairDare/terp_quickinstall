@@ -381,6 +381,47 @@ sleep 1
 if [[ "$bench_version" == "version-15" ]]; then
     bench setup socketio
     bench setup redis
+    
+    # Fix Redis configuration to use standard port 6379 instead of 11000
+    echo -e "${YELLOW}Configuring Redis to use standard port 6379...${NC}"
+    config_file="sites/common_site_config.json"
+    if [ -f "$config_file" ]; then
+        # Create backup of original config
+        cp "$config_file" "${config_file}.backup"
+        
+        # Update Redis configuration to use port 6379 for all services
+        python3 -c "
+import json
+import os
+
+config_file = '$config_file'
+if os.path.exists(config_file):
+    with open(config_file, 'r') as f:
+        config = json.load(f)
+    
+    # Set Redis configurations to use port 6379
+    config.update({
+        'redis_cache': 'redis://127.0.0.1:6379',
+        'redis_queue': 'redis://127.0.0.1:6379',
+        'redis_socketio': 'redis://127.0.0.1:6379'
+    })
+    
+    with open(config_file, 'w') as f:
+        json.dump(config, f, indent=2)
+    
+    print('Redis configuration updated to use port 6379')
+else:
+    print('Config file not found, creating with Redis settings')
+    config = {
+        'redis_cache': 'redis://127.0.0.1:6379',
+        'redis_queue': 'redis://127.0.0.1:6379', 
+        'redis_socketio': 'redis://127.0.0.1:6379'
+    }
+    with open(config_file, 'w') as f:
+        json.dump(config, f, indent=2)
+"
+    echo -e "${GREEN}Redis configuration updated successfully!${NC}"
+    sleep 1
 fi
 
 echo -e "${GREEN}Development setup complete!${NC}"
