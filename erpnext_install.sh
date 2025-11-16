@@ -494,5 +494,3 @@ echo -e "-----------------------------------------------------------------------
 echo -e "${YELLOW}Starting development server...${NC}"
 sleep 1
 bench start
-
-
